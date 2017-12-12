@@ -27,11 +27,12 @@ double BehaviorController::KArrival = 1.0;
 double BehaviorController::KDeparture = 12000.0;
 double BehaviorController::KNoise = 15.0;
 double BehaviorController::KWander = 80.0;   
-double BehaviorController::KAvoid = 600.0;  
+double BehaviorController::KAvoid = 30.0;  
 double BehaviorController::TAvoid = 1000.0;   
 double BehaviorController::KSeparation = 12000.0; 
 double BehaviorController::KAlignment = 1.0;  
-double BehaviorController::KCohesion = 1.0;  
+double BehaviorController::KCohesion = 1.0;
+double BehaviorController::RNeighborhood = 500.0;
 
 const double M2_PI = M_PI * 2.0;
 
@@ -162,16 +163,8 @@ void BehaviorController::control(double deltaT)
 
 		// TODO: insert your code here to compute m_force and m_torque
 
-
-
-
-
-
-
-
-
-
-
+		m_vd = m_Vdesired.Length();
+		
 
 
 		// when agent desired agent velocity and actual velocity < 2.0 then stop moving
@@ -179,6 +172,26 @@ void BehaviorController::control(double deltaT)
 		{
 			m_force[2] = 0.0;
 			m_torque[1] = 0.0;
+		}
+		else {
+			vec3 dir = m_Vdesired;
+			dir.Normalize();
+			m_thetad = atan2(dir[_Z], dir[_X]);
+
+			gVelKv = 4 / (0.4 * gMass);
+			m_force[0] = m_force[1] = 0.0;
+			m_force[2] = gMass * gVelKv * (m_vd - m_state[VEL][_Z]);
+
+			double Iyy = gInertia;
+
+			gOriKv = 32;
+			gOriKp = 256;
+
+			m_torque[0] = m_torque[2] = 0.0;
+
+			double d = m_thetad - m_state[ORI][1];
+			ClampAngle(d);
+			m_torque[1] = Iyy * (-gOriKv * m_stateDot[ORI][_Y] + gOriKp * d);
 		}
 	}
 	else
@@ -211,11 +224,34 @@ void BehaviorController::computeDynamics(vector<vec3>& state, vector<vec3>& cont
 
 	// Compute the stateDot vector given the values of the current state vector and control input vector
 	// TODO: add your code here
+	
+	// Compute RB0
+	double theta =  state[ORI][1];
+
+	//mat3 RB0 = mat3::Rotation3D(vec3(0, 1, 0), -theta);
+	mat3 RB0 = mat3(vec3(-sin(theta), 0, cos(theta)), vec3(0, 1, 0), vec3(cos(theta), 0, sin(theta)));
+
+	stateDot[0] =  RB0 * state[VEL];
+	stateDot[1] = state[AVEL];
 
 
+	vec3 acceleration;
 
+	acceleration[0] = force[0] / gMass;
+	acceleration[1] = 0.0;
+	acceleration[2] = force[2] / gMass; 
 
+	stateDot[2] = acceleration;
 
+	double Iyy = gInertia; 
+
+	vec3 angularAcc;
+	angularAcc[0] = 0.0;
+	angularAcc[1] = torque[1] / Iyy;
+	angularAcc[2] = 0.0;
+
+	stateDot[3] = angularAcc;
+	
 }
 
 void BehaviorController::updateState(float deltaT, int integratorType)
@@ -224,13 +260,25 @@ void BehaviorController::updateState(float deltaT, int integratorType)
 	//  this should be similar to what you implemented in the particle system assignment
 
 	// TODO: add your code here
-	
+	if (integratorType == 0) {
+		for (int i = 0; i < 4; ++i) {
+			m_state[i] += m_stateDot[i] * deltaT;
 
+		}
+	}
+	else if (integratorType == 1) {
+		vector<vec3> prediction = m_state;
+		for (int i = 0; i < 4; ++i) {
+			prediction[i] += m_stateDot[i] * deltaT;
+		}
+		vector<vec3> predictionDot;
+		computeDynamics(prediction, m_controlInput, predictionDot, deltaT);
 
+		for (int i = 0; i < 4; ++i) {
+			m_state[i] += deltaT * (predictionDot[i] + m_stateDot[i]) / 2;
+		}
 
-
-
-
+	}
 
 	//  given the new values in m_state, these are the new component state values 
 	m_Pos0 = m_state[POS];
@@ -238,14 +286,18 @@ void BehaviorController::updateState(float deltaT, int integratorType)
 	m_VelB = m_state[VEL];
 	m_AVelB = m_state[AVEL];
 
+	m_Vel0 = m_stateDot[POS];
+
 	//  Perform validation check to make sure all values are within MAX values
 	// TODO: add your code here
-
-
-
-
-
-
+	if (m_Vel0.Length() > gMaxSpeed) {
+		m_Vel0.Normalize();
+		m_Vel0 *= gMaxSpeed;
+	}
+	if (m_AVelB.Length() > gMaxAngularSpeed) {
+		m_AVelB.Normalize();
+		m_AVelB *= gMaxAngularSpeed;
+	}
 
 
 	// update the guide orientation
@@ -313,10 +365,13 @@ void BehaviorController::display()
 	glBegin(GL_LINES);
 	glColor3f(1, 0, 0);
 	glVertex3f(pos[0], pos[1], pos[2]);
-	glVertex3f(pos[0] + vel[0], pos[1] + vel[1], pos[2] + vel[2]);
+	vec3 posac = vec3(pos[0] + vel[0], pos[1] + vel[1], pos[2] + vel[2]);
+	glVertex3f(posac[0], posac[1], posac[2]);
 	glColor3f(0, 1, 0);
 	glVertex3f(pos[0], pos[1], pos[2]);
-	glVertex3f(pos[0] + dvel[0], pos[1] + dvel[1], pos[2] + dvel[2]);
+	vec3 posde = vec3(pos[0] + dvel[0], pos[1] + dvel[1], pos[2] + dvel[2]);
+	posde.Normalize();
+	glVertex3f(posde[0], posde[1], posde[2]);
 	glEnd();
 
 	if (this->isLeader())

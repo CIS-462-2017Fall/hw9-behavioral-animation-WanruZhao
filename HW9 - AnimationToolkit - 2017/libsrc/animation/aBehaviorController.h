@@ -125,7 +125,7 @@ protected:
 		// m_stateDot[1] = m_AVelB = [ 0 thetaDot 0]T for the 2D planar case
 		// m_stateDot[2] = body acceleration = [ accelx 0 accelz]T for the 2D planar case
 		// m_stateDot[3] = body angular acceleration = = [ 0 thetaDot2 0]T for the 2D planar case
-
+ 
     // Inputs:  forces and torques
 	vec3 m_force;
 	// m_force[0] = body force in the x direction
