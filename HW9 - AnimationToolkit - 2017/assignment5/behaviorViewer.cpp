@@ -84,6 +84,18 @@ void BehaviorViewer::initializeGui()
 	TwAddButton(m_TwBehaviorBar, "Reset", onResetCb, this, "");
 
 	//TODO: Add your code here to create additional GUI Variables
+
+	TwAddVarRW(m_TwBehaviorBar, "Arrival Gain", TW_TYPE_DOUBLE, &BehaviorController::KArrival, "");
+	TwAddVarRW(m_TwBehaviorBar, "Depature Gain", TW_TYPE_DOUBLE, &BehaviorController::KDeparture, "");
+	TwAddVarRW(m_TwBehaviorBar, "Avoid Gain", TW_TYPE_DOUBLE, &BehaviorController::KAvoid, "");
+	TwAddVarRW(m_TwBehaviorBar, "Noise Gain", TW_TYPE_DOUBLE, &BehaviorController::KNoise, "");
+	TwAddVarRW(m_TwBehaviorBar, "Wander Gain", TW_TYPE_DOUBLE, &BehaviorController::KWander, "");
+	TwAddVarRW(m_TwBehaviorBar, "Alignment Gain", TW_TYPE_DOUBLE, &BehaviorController::KAlignment, "");
+	TwAddVarRW(m_TwBehaviorBar, "Separation Gain", TW_TYPE_DOUBLE, &BehaviorController::KSeparation, "");
+	TwAddVarRW(m_TwBehaviorBar, "Cohesion Gain", TW_TYPE_DOUBLE, &BehaviorController::KCohesion, "");
+	TwAddVarRW(m_TwBehaviorBar, "Neighborhood Radius", TW_TYPE_DOUBLE, &BehaviorController::RNeighborhood, "");
+
+
 }
 
 
@@ -347,7 +359,9 @@ void BehaviorViewer::displayGrid()
     if (ACamera::gDfltUp[2] == 1) // Z-UP =>rotate
     {
         glPushMatrix();
-        glRotatef(90, 1, 0, 0);
+		glRotatef(90, 1, 0, 0);
+
+
     }
     glColor3f(0.8f, 0.8f, 0.8f);
     glLineWidth(1.0);
